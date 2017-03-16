@@ -1,0 +1,6 @@
+{
+    "queryStringParameters": {
+        "parm1": "ABCDEFG",
+        "parm2": "1234567"
+    }
+}
