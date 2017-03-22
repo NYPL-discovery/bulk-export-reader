@@ -21,10 +21,16 @@ Default output format [None]: (blank)
 
 More documentation can be found [here](https://docs.google.com/document/d/1RW47fDEvuIjUC-lJu_OFVylPQtyiX2OfjW_8QJpcm38/edit#)
 
+
+To start, run `npm install` to install the dependencies.  
+
+For testing, run `cp items.ndjson.example items.ndjson` and try `node-lambda run`.
+
+
 # What it Does
 This is a simple lambda that reads from a large local dump of files, encodes the streamed records into avro, and posts to a kinesis stream for more processing.
 
-Once you have the items.ndjson file at the root of the lambda, run the application with the standard command: 'node-lambda run'.
+Once you have the items.ndjson file at the root of the lambda, run the application with the standard command: `node-lambda run`.
 
 # In the Future the lambda may want to think about if it wants to...
 * Watch the directory proactively and run when a new ndjson file is added or a current file is updated, instead of requiring manual copying of files and manually running the lambda.
