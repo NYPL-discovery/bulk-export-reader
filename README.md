@@ -2,13 +2,24 @@
 Reads items from Sierra export saved in S3 export file, and publishes SierraItem to the SierraItemPostRequest Stream
 
 # Setup
-First, you'll need access to the AWS streams, or will need to create your own test streams. This lambda requires:
+To build/test install https://www.npmjs.com/package/node-lambda globally (`npm i -g node-lambda`) if you haven't already done so for other projects.
+
+This particular lambda requires:
 
 * Local items.ndjson file of NYPL Sierra catalog item records: This will be the source of the records the app will encode and pass to the Kinesis stream. (An example file with two records is included. Change the name to 'items.ndjson' to use it.)
 * A Kinesis stream to post records to. (Feel free to use 'testS3ItemReader' to test.)
 * A schema to use to validate avro conversion. Current lambda uses https://api.nypltech.org/api/v0.1/current-schemas/SierraItemRetrievalRequest
 
-To configure AWS appropriately, install the AWS SDK, then run 'aws confingure' and set your keys to the appropriate values. Get the credentials from the team.
+To add AWS credentials, type `aws configure` or `vi ~/.aws/credentials` (or your editor of choice) and enter in the credentials as provided to you by a colleague.  
+
+```
+AWS Access Key ID: (add secret)
+AWS Secret Access: (add secret)
+Default region name [None]: us-east-1
+Default output format [None]: (blank)
+```
+
+More documentation can be found [here](https://docs.google.com/document/d/1RW47fDEvuIjUC-lJu_OFVylPQtyiX2OfjW_8QJpcm38/edit#)
 
 # What it Does
 This is a simple lambda that reads from a large local dump of files, encodes the streamed records into avro, and posts to a kinesis stream for more processing.

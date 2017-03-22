@@ -1,7 +1,7 @@
 {
-  "name": "node-lambda-example",
+  "name": "sierra-items-s3-reader",
   "version": "1.0.0",
-  "description": "",
+  "description": "Reads items from Sierra export saved in S3 export file, and publishes SierraItem to the SierraItemPostRequest Stream",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,5 +9,24 @@
   "author": "NYPL",
   "license": "ISC",
   "dependencies": {
-  }
+    "avsc": "^5.0.0",
+    "aws-sdk": "^2.28.0",
+    "crypto": "^0.0.3",
+    "event-stream": "^3.3.4",
+    "JSONStream": "^1.3.1",
+    "node-avro-io": "^1.0.0",
+    "sierra-wrapper": "^0.1.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NYPL-discovery/sierra-items-s3-reader.git"
+  },
+  "keywords": [
+    "catalog"
+  ],
+  "bugs": {
+    "url": "https://github.com/NYPL-discovery/sierra-items-s3-reader/issues"
+  },
+  "homepage": "https://github.com/NYPL-discovery/sierra-items-s3-reader#readme"
 }
