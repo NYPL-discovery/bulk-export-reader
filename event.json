@@ -1,1 +1,7 @@
-{}
+{ "exports": [
+  {
+    "exportFile": "item-exports/items.ndjson"
+  },{
+    "exportFile": "bib-exports/bibs.ndjson"
+  }]
+}

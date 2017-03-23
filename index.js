@@ -11,25 +11,28 @@ exports.handler = function(event, context){
   var fs = require('fs'),
   JSONStream = require('JSONStream'),
   es = require('event-stream');
+  var exports = event.exports;
 
-  var getStream = function () {
-      var jsonData = 'items.ndjson',
-          stream = fs.createReadStream(jsonData, {encoding: 'utf8'}),
-          parser = JSONStream.parse();
-          return stream.pipe(parser);
-  };
+  exports.forEach(function(exportFile) {
+    var getStream = function () {
+        var jsonData = exportFile.exportFile,
+            stream = fs.createReadStream(jsonData, {encoding: 'utf8'}),
+            parser = JSONStream.parse();
+            return stream.pipe(parser);
+    };
 
-   getStream()
-    .pipe(es.mapSync(function (data) {
-      kinesisHandler(data, context);
-    }));
+     getStream()
+      .pipe(es.mapSync(function (data) {
+        kinesisHandler(data, context);
+      }));
+  });
 };
 
 //kinesis stream handler
 var kinesisHandler = function(record, context) {
   console.log('Processing ' + record );
   console.log(record);
-  postItemsStream(record);
+  postKinesisStream(record);
 }
 
 //get schema
@@ -48,13 +51,13 @@ var schema = function(url, context) {
 }
 
 //send data to kinesis Stream
-var postItemsStream = function(item){
-  const type = avro.infer(item);
-  console.log(type.getSchema());
-  const item_in_avro_format = type.toBuffer(item);
-  console.log("Avro formatted item: " + item_in_avro_format);
+var postKinesisStream = function(record){
+  const type = avro.infer(record);
+  const record_in_avro_format = type.toBuffer(record);
+  console.log("Avro formatted record: " + record_in_avro_format);
+  console.log("NAME " + type.getSchema() + "<<<<<<");
   var params = {
-    Data: item_in_avro_format, /* required */
+    Data: record_in_avro_format, /* required */
     PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
     StreamName: 'testS3ItemReader', /* required */
   }
