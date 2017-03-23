@@ -21,25 +21,15 @@ exports.handler = function(event, context){
 
    getStream()
     .pipe(es.mapSync(function (data) {
-      var recordString = JSON.stringify(data);
-      console.log(recordString);
-      kinesisHandler(recordString, context);
+      kinesisHandler(data, context);
     }));
 };
 
 //kinesis stream handler
 var kinesisHandler = function(record, context) {
   console.log('Processing ' + record );
-  var url = "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemRetrievalRequest";
-  schema(url)
-    .then(function(schema_data) {
-      // var json_data = avro_decoded_data(schema_data, record);
-      console.log(record);
-      postItemsStream(record);
-    })
-    .catch(function(e){
-      console.log(e);
-    });
+  console.log(record);
+  postItemsStream(record);
 }
 
 //get schema
@@ -57,21 +47,12 @@ var schema = function(url, context) {
   })
 }
 
-//use avro to deserialize
-var avro_decoded_data = function(schema_data, record){
-  // const type = avro.infer(record.to_json);
-  // console.log(type);
-  // const item_in_avro_format = type.toBuffer(record);
-  // var decoded = new Buffer(record, 'base64');
-  // var verify = type.fromBuffer(decoded);
-  return record; // JSON.parse(item_in_avro_format);
-}
-
 //send data to kinesis Stream
 var postItemsStream = function(item){
   const type = avro.infer(item);
   console.log(type.getSchema());
   const item_in_avro_format = type.toBuffer(item);
+  console.log("Avro formatted item: " + item_in_avro_format);
   var params = {
     Data: item_in_avro_format, /* required */
     PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */

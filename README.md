@@ -16,7 +16,7 @@ To add AWS credentials, type `aws configure` or `vi ~/.aws/credentials` (or your
 AWS Access Key ID: (add secret)
 AWS Secret Access: (add secret)
 Default region name [None]: us-east-1
-Default output format [None]: (blank)
+Default output format [None]: (blank / json)
 ```
 
 More documentation can be found [here](https://docs.google.com/document/d/1RW47fDEvuIjUC-lJu_OFVylPQtyiX2OfjW_8QJpcm38/edit#)
