@@ -17,7 +17,12 @@
     "node-avro-io": "^1.0.0",
     "sierra-wrapper": "^0.1.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "mocha": "^3.2.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NYPL-discovery/sierra-items-s3-reader.git"
