@@ -23,16 +23,16 @@ exports.handler = function(event, context){
 
      getStream()
       .pipe(es.mapSync(function (data) {
-        kinesisHandler(data, context);
+        kinesisHandler(data, context, exportFile);
       }));
   });
 };
 
 //kinesis stream handler
-var kinesisHandler = function(record, context) {
+var kinesisHandler = function(record, context, exportFile) {
   console.log('Processing ' + record );
   console.log(record);
-  postKinesisStream(record);
+  postKinesisStream(record, exportFile);
 }
 
 //get schema
@@ -43,23 +43,24 @@ var schema = function(url, context) {
       if(!error && response.statusCode == 200){
         resolve(JSON.parse(body).data.schema);
       }else{
-        console.log("An error occurred - " + response.statusCode);
-        reject("Error occurred while getting schema - " + response.statusCode);
+        console.log(`An error occurred ${response.statusCode}`);
+        reject(`Error occurred while getting schema ${response.statusCode}`);
       }
     })
   })
 }
 
 //send data to kinesis Stream
-var postKinesisStream = function(record){
-  const type = avro.infer(record);
+var postKinesisStream = function(record, exportFile){
+  const type = avro.Type.forValue(record);
+  console.log(JSON.stringify(record));
   const record_in_avro_format = type.toBuffer(record);
-  console.log("Avro formatted record: " + record_in_avro_format);
-  console.log("NAME " + type.getSchema() + "<<<<<<");
+  console.log(`Avro formatted ${exportFile.recordType}: ${record_in_avro_format}`);
+  console.log(type.getSchema());
   var params = {
     Data: record_in_avro_format, /* required */
     PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
-    StreamName: 'testS3ItemReader', /* required */
+    StreamName: exportFile.postStream, /* required */
   }
   kinesis.putRecord(params, function (err, data) {
     if (err) console.log(err, err.stack) // an error occurred
