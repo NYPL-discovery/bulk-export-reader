@@ -32,6 +32,8 @@ This is a simple lambda that reads from large local dumps of files, encodes the 
 
 Once you have the files, run the application with the standard command: `node-lambda run`.
 
+The records are encoded with Avro. The schemas they use are https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest and https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest.
+
 # In the Future the lambda may want to think about if it wants to...
 * Watch the directories proactively and run when a new ndjson file is added or a current file is updated, instead of requiring manual copying of files and manually running the lambda.
 * Possibly accept records from other external sources other than the NYPL Sierra catalog.
