@@ -1,10 +1,12 @@
-console.log("Loading sierra s3 item reader");
+console.log("Loading bulk export reader");
 
 const avro = require('avsc');
 const AWS = require('aws-sdk')
 const crypto = require('crypto')
 const kinesis = new AWS.Kinesis({region: 'us-east-1'})
 const wrapper = require('sierra-wrapper')
+
+var schema_stream_retriever = null;
 
 //main function
 exports.handler = function(event, context){
@@ -20,7 +22,6 @@ exports.handler = function(event, context){
             parser = JSONStream.parse();
             return stream.pipe(parser);
     };
-
      getStream()
       .pipe(es.mapSync(function (data) {
         kinesisHandler(data, context, exportFile);
@@ -30,9 +31,19 @@ exports.handler = function(event, context){
 
 //kinesis stream handler
 var kinesisHandler = function(record, context, exportFile) {
-  console.log('Processing ' + record );
-  console.log(record);
-  postKinesisStream(record, exportFile);
+  console.log(`Processing ${record}`);
+  if(schema_stream_retriever === null){
+    schema(exportFile.apiSchema)
+    .then(function(schema_data){
+      schema_stream_retriever = schema_data;
+      postKinesisStream(record, exportFile, schema_data);
+    })
+    .catch(function(e){
+      console.log(e, e.stack);
+    });
+  }else{
+    postKinesisStream(record, exportFile, schema_stream_retriever);
+  }
 }
 
 //get schema
@@ -51,12 +62,11 @@ var schema = function(url, context) {
 }
 
 //send data to kinesis Stream
-var postKinesisStream = function(record, exportFile){
-  const type = avro.Type.forValue(record);
-  console.log(JSON.stringify(record));
-  const record_in_avro_format = type.toBuffer(record);
-  console.log(`Avro formatted ${exportFile.recordType}: ${record_in_avro_format}`);
-  console.log(type.getSchema());
+var postKinesisStream = function(record, exportFile, schemaData){
+  var avro_schema = avro.parse(schemaData);
+  console.log("Avro schema: " + avro_schema);
+  const record_in_avro_format = avro_schema.toBuffer(record);
+  console.log(record_in_avro_format);
   var params = {
     Data: record_in_avro_format, /* required */
     PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
@@ -65,7 +75,6 @@ var postKinesisStream = function(record, exportFile){
   kinesis.putRecord(params, function (err, data) {
     if (err) console.log(err, err.stack) // an error occurred
     else     console.log(data)           // successful response
-    //cb(null,data)
   })
 
 }
