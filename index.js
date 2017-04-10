@@ -1,10 +1,10 @@
 console.log("Loading bulk export reader");
 
 const avro = require('avsc');
-const AWS = require('aws-sdk')
-const crypto = require('crypto')
-const kinesis = new AWS.Kinesis({region: 'us-east-1'})
-const wrapper = require('sierra-wrapper')
+const AWS = require('aws-sdk');
+const crypto = require('crypto');
+const kinesis = new AWS.Kinesis({region: 'us-east-1'});
+const wrapper = require('sierra-wrapper');
 
 var schema_stream_retriever = null;
 
@@ -16,14 +16,26 @@ exports.handler = function(event, context){
   var exports = event.exports;
 
   exports.forEach(function(exportFile) {
+    var s3 = new AWS.S3({apiVersion: '2006-03-01'});
+    var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
+    // var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
+    // var file = require('fs').createWriteStream('test.txt');
+
     var getStream = function () {
-        var jsonData = exportFile.exportFile,
-            stream = fs.createReadStream(jsonData, {encoding: 'utf8'}),
-            parser = JSONStream.parse();
-            return stream.pipe(parser);
+      var jsonData = 'bibs.ndjson',
+          parser = JSONStream.parse();
+          return s3.getObject(params).createReadStream().pipe(parser);
     };
+
+    // var getStream = function () {
+    //     var jsonData = exportFile.exportFile,
+    //         stream = fs.createReadStream(jsonData, {encoding: 'utf8'}),
+    //         parser = JSONStream.parse();
+    //         return stream.pipe(parser);
+    // };
      getStream()
       .pipe(es.mapSync(function (data) {
+        console.log(data);
         kinesisHandler(data, context, exportFile);
       }));
   });
@@ -39,6 +51,7 @@ var kinesisHandler = function(record, context, exportFile) {
       postKinesisStream(record, exportFile, schema_data);
     })
     .catch(function(e){
+      console.log(record);
       console.log(e, e.stack);
     });
   }else{

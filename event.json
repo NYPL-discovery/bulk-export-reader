@@ -1,13 +1,14 @@
 { "exports": [
   {
-    "exportFile": "item-exports/items.ndjson",
-    "postStream": "testS3ItemReader",
-    "recordType": "item",
-    "apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"
-  },{
-    "exportFile": "bib-exports/bibs.ndjson",
-    "postStream": "testS3BibReader",
+    "exportFile": "bibs.ndjson",
+    "postStream": "SierraBibPostRequest",
     "recordType": "bib",
     "apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"
+  },
+  {
+    "exportFile": "items.ndjson",
+    "postStream": "SierraItemPostRequest",
+    "recordType": "bib",
+    "apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"
   }]
 }
