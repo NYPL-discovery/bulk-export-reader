@@ -18,8 +18,6 @@ exports.handler = function(event, context){
   exports.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
-    // var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
-    // var file = require('fs').createWriteStream('test.txt');
 
     var getStream = function () {
       var jsonData = 'bibs.ndjson',
@@ -27,12 +25,6 @@ exports.handler = function(event, context){
           return s3.getObject(params).createReadStream().pipe(parser);
     };
 
-    // var getStream = function () {
-    //     var jsonData = exportFile.exportFile,
-    //         stream = fs.createReadStream(jsonData, {encoding: 'utf8'}),
-    //         parser = JSONStream.parse();
-    //         return stream.pipe(parser);
-    // };
      getStream()
       .pipe(es.mapSync(function (data) {
         console.log(data);
