@@ -10,15 +10,13 @@ var schema_stream_retriever = null;
 
 //main function
 exports.handler = function(event, context){
-  var fs = require('fs'),
   JSONStream = require('JSONStream'),
   es = require('event-stream');
-  var exports = event.exports;
+  var exports = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
 
   exports.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
-
     var getStream = function () {
       var jsonData = 'bibs.ndjson',
           parser = JSONStream.parse();
@@ -27,7 +25,6 @@ exports.handler = function(event, context){
 
      getStream()
       .pipe(es.mapSync(function (data) {
-        console.log(data);
         kinesisHandler(data, context, exportFile);
       }));
   });
@@ -35,7 +32,6 @@ exports.handler = function(event, context){
 
 //kinesis stream handler
 var kinesisHandler = function(record, context, exportFile) {
-  console.log(`Processing ${record}`);
   if(schema_stream_retriever === null){
     schema(exportFile.apiSchema)
     .then(function(schema_data){
@@ -69,17 +65,15 @@ var schema = function(url, context) {
 //send data to kinesis Stream
 var postKinesisStream = function(record, exportFile, schemaData){
   var avro_schema = avro.parse(schemaData);
-  console.log("Avro schema: " + avro_schema);
   const record_in_avro_format = avro_schema.toBuffer(record);
-  console.log(record_in_avro_format);
   var params = {
     Data: record_in_avro_format, /* required */
     PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
     StreamName: exportFile.postStream, /* required */
   }
   kinesis.putRecord(params, function (err, data) {
-    if (err) console.log(err, err.stack) // an error occurred
-    else     console.log(data)           // successful response
+    if (err) console.log(err, err.stack); // an error occurred
+    else     console.log("Successfully posted to kinesis.");           // successful response
   })
 
 }
