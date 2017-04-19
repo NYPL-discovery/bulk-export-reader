@@ -14,7 +14,8 @@ ADD . .
 # RUN apk add --update make gcc g++ python
 
 # If you need npm, don't use a base tag
-# RUN npm install
+# ADD package.json /src/package.json
+# RUN cd /src && npm install
 
 # If you had native dependencies you can now remove build tools
 # RUN apk del make gcc g++ python && \
@@ -31,4 +32,4 @@ ENTRYPOINT ["node", "_container.js"]
 #
 # Note: base64 stringified JSON is supported here too.
 # For example: docker run lambda-container 'eyJteSI6ICJldmVudCBtZXNzYWdlIn0='
-CMD ['{ "exports": [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]}']
+CMD ["{}"]
