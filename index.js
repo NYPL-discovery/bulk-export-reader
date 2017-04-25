@@ -12,8 +12,7 @@ var schema_stream_retriever = null;
 
 //main function
 exports.handler = function(event, context){
-  JSONStream = require('JSONStream'),
-  es = require('event-stream');
+  JSONStream = require('JSONStream');
   var exps = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
 
   exps.forEach(function(exportFile) {
@@ -27,7 +26,6 @@ exports.handler = function(event, context){
         .compact()
         .map(JSON.parse)
         .each((data) => {
-          console.log(data)
           kinesisHandler(data, context, exportFile);
           return false;
         })
