@@ -5,7 +5,8 @@ const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const kinesis = new AWS.Kinesis({region: 'us-east-1'});
 const wrapper = require('sierra-wrapper');
-const H = require('highland');
+const highland = require('highland');
+const async = require('async');
 
 var schema_stream_retriever = null;
 
@@ -13,21 +14,27 @@ var schema_stream_retriever = null;
 exports.handler = function(event, context){
   JSONStream = require('JSONStream'),
   es = require('event-stream');
-  var exports = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
+  var exps = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
 
-  exports.forEach(function(exportFile) {
+  exps.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
     var getStream = function () {
       var jsonData = exportFile.exportFile,
           parser = JSONStream.parse();
-          return H(s3.getObject(params).createReadStream()).pipe(parser);
-    };
+      highland(s3.getObject(params).createReadStream())
+        .split()
+        .compact()
+        .map(JSON.parse)
+        .each((data) => {
+          console.log(data)
+          kinesisHandler(data, context, exportFile);
+          return false;
+        })
+    }
 
-     getStream()
-      .pipe(es.mapSync(function (data) {
-        kinesisHandler(data, context, exportFile);
-      }));
+    getStream()
+
   });
 };
 
