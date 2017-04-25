@@ -20,14 +20,21 @@ exports.handler = function(event, context){
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
     var getStream = function () {
       var jsonData = exportFile.exportFile,
-          parser = JSONStream.parse();
+          parser = JSONStream.parse(),
+          data_array = [],
+          idx = 0;
       highland(s3.getObject(params).createReadStream())
         .split()
         .compact()
         .map(JSON.parse)
         .each((data) => {
-          kinesisHandler(data, context, exportFile);
-          return false;
+          idx = idx + 1;
+          data_array.push(data);
+          if (idx > 499) {
+            idx = 0;
+            kinesisHandler(data_array, context, exportFile);
+            data_array = [];
+          }
         })
     }
 
@@ -37,19 +44,19 @@ exports.handler = function(event, context){
 };
 
 //kinesis stream handler
-var kinesisHandler = function(record, context, exportFile) {
+var kinesisHandler = function(records, context, exportFile) {
   if(schema_stream_retriever === null){
     schema(exportFile.apiSchema)
     .then(function(schema_data){
       schema_stream_retriever = schema_data;
-      postKinesisStream(record, exportFile, schema_data);
+      postKinesisStream(records, exportFile, schema_data);
     })
     .catch(function(e){
-      console.log(record);
+      console.log(records[0]);
       console.log(e, e.stack);
     });
   }else{
-    postKinesisStream(record, exportFile, schema_stream_retriever);
+    postKinesisStream(records, exportFile, schema_stream_retriever);
   }
 }
 
@@ -69,15 +76,21 @@ var schema = function(url, context) {
 }
 
 //send data to kinesis Stream
-var postKinesisStream = function(record, exportFile, schemaData){
+var postKinesisStream = function(records, exportFile, schemaData){
   var avro_schema = avro.parse(schemaData);
-  const record_in_avro_format = avro_schema.toBuffer(record);
+  records_in_avro_format = []
+  records.forEach(function(rec) {
+    var amazon_hash = {
+      Data: avro_schema.toBuffer(rec),
+      PartitionKey: crypto.randomBytes(20).toString('hex').toString() /* required */
+    }
+    records_in_avro_format.push(amazon_hash);
+  })
   var params = {
-    Data: record_in_avro_format, /* required */
-    PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
-    StreamName: exportFile.postStream, /* required */
+    Records: records_in_avro_format, /* required */
+    StreamName: exportFile.postStream /* required */
   }
-  kinesis.putRecord(params, function (err, data) {
+  kinesis.putRecords(params, function (err, data) {
     if (err) console.log(err, err.stack); // an error occurred
     else     console.log("Successfully posted to kinesis.");           // successful response
   })
