@@ -6,7 +6,6 @@ const crypto = require('crypto');
 const kinesis = new AWS.Kinesis({region: 'us-east-1'});
 const wrapper = require('sierra-wrapper');
 const highland = require('highland');
-const async = require('async');
 
 var schema_stream_retriever = null;
 
