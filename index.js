@@ -34,7 +34,8 @@ exports.handler = function(event, context){
             kinesisHandler(data_array, context, exportFile);
             data_array = [];
           }
-        })
+        });
+      kinesisHandler(data_array, context, exportFile); // once more for the last batch, whatever size it is.
     }
 
     getStream()
@@ -91,7 +92,7 @@ var postKinesisStream = function(records, exportFile, schemaData){
   }
   kinesis.putRecords(params, function (err, data) {
     if (err) console.log(err, err.stack); // an error occurred
-    else     console.log("Successfully posted to kinesis.");           // successful response
+    else     console.log(`Successfully posted ${records.length} to kinesis. Sample record: ${JSON.stringify(records[0])}`);           // successful response
   })
 
 }
