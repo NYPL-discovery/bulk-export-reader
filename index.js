@@ -91,7 +91,7 @@ var postKinesisStream = function(records, exportFile, schemaData){
     StreamName: exportFile.postStream /* required */
   }
   kinesis.putRecords(params, function (err, data) {
-    if (err) console.log(err, err.stack); // an error occurred
+    if (err) console.log(`Error posting to Kinesis: ${err}`, err.stack); // an error occurred
     else     console.log(`Successfully posted ${records.length} to kinesis. Sample record: ${JSON.stringify(records[0])}`);           // successful response
   })
 
