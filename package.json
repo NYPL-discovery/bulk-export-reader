@@ -14,8 +14,10 @@
     "aws-sdk": "^2.28.0",
     "crypto": "^0.0.3",
     "event-stream": "^3.3.4",
+    "kinesis-readable": "^1.0.0",
     "node-avro-io": "^1.0.0",
     "node-hashes": "^0.1.0",
+    "redis": "^2.7.1",
     "sierra-wrapper": "^0.1.0"
   },
   "devDependencies": {

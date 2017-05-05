@@ -1,20 +1,22 @@
-console.log("Loading bulk export reader");
-
 const avro = require('avsc');
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const kinesis = new AWS.Kinesis({region: 'us-east-1'});
 const wrapper = require('sierra-wrapper');
 const highland = require('highland');
-const async = require('async');
+//const async = require('async');
 
 var schema_stream_retriever = null;
 
 //main function
 exports.handler = function(event, context){
+  console.log("Loading bulk export reader");
   JSONStream = require('JSONStream');
-  var exps = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
-
+  var exps = [ 
+    //{"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},
+    {"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}
+    ]
+  loadLimit = process.env.loadLimit
   exps.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
@@ -23,40 +25,54 @@ exports.handler = function(event, context){
           parser = JSONStream.parse(),
           data_array = [],
           idx = 0;
+          loadIndex = 1;
       highland(s3.getObject(params).createReadStream())
         .split()
         .compact()
         .map(JSON.parse)
+        .stopOnError((err, data) => {
+          if(err) console.log('error occurred - ' + err.message)
+        })
         .each((data) => {
           idx = idx + 1;
           data_array.push(data);
-          if (idx > 499) {
-            idx = 0;
-            kinesisHandler(data_array, context, exportFile);
-            data_array = [];
+          if(loadIndex <= loadLimit){
+            if (idx > 499) {
+              console.log('loadIndex - ' + loadIndex)
+              console.log('loadLimit - ' + loadLimit)
+              console.log("Length of data_array - " + data_array.length)
+              idx = 0;
+              kinesisHandler(loadIndex, data_array, context, exportFile);
+              console.log('Sent data')
+              data_array = [];
+            }
+            loadIndex +=1
           }
         })
     }
-
     getStream()
 
   });
 };
 
 //kinesis stream handler
-var kinesisHandler = function(records, context, exportFile) {
+var kinesisHandler = function(loadIndex, records, context, exportFile) {
   if(schema_stream_retriever === null){
     schema(exportFile.apiSchema)
     .then(function(schema_data){
       schema_stream_retriever = schema_data;
-      postKinesisStream(records, exportFile, schema_data);
+      setTimeout(() => {
+       postKinesisStream(records, exportFile, schema_data); 
+      }, loadIndex)
     })
     .catch(function(e){
       console.log(records[0]);
       console.log(e, e.stack);
     });
   }else{
-    postKinesisStream(records, exportFile, schema_stream_retriever);
+    setTimeout(() => {
+      postKinesisStream(records, exportFile, schema_stream_retriever);
+    }, loadIndex)
   }
 }
 
@@ -75,6 +91,8 @@ var schema = function(url, context) {
   })
 }
 
+var postedToKinesis = 0
+
 //send data to kinesis Stream
 var postKinesisStream = function(records, exportFile, schemaData){
   var avro_schema = avro.parse(schemaData);
@@ -90,9 +108,14 @@ var postKinesisStream = function(records, exportFile, schemaData){
     Records: records_in_avro_format, /* required */
     StreamName: exportFile.postStream /* required */
   }
+  /*console.log("Not posting records")
+  console.log('Records to kinesis - ' + records_in_avro_format.length)*/
   kinesis.putRecords(params, function (err, data) {
     if (err) console.log(err, err.stack); // an error occurred
-    else     console.log("Successfully posted to kinesis.");           // successful response
+    else    {
+      postedToKinesis += records_in_avro_format.length;
+      console.log("Successfully posted to kinesis: " + postedToKinesis);           // successful response
+    } 
   })
 
 }
