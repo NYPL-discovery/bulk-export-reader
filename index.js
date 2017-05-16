@@ -32,7 +32,6 @@ exports.handler = function(event, context){
           idx = idx + 1;
           data["nyplSource"] = "sierra-nypl";
           data["nyplType"] = exportFile.recordType;
-          console.log(data);
           data_array.push(data);
           if (idx > 499) {
             idx = 0;
