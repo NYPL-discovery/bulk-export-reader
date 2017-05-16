@@ -12,29 +12,38 @@ var schema_stream_retriever = null;
 //main function
 exports.handler = function(event, context){
   JSONStream = require('JSONStream');
-  var exps = [ {"exportFile": "items.ndjson","postStream": "SierraItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest"},{"exportFile": "bibs.ndjson","postStream": "SierraBibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest"}]
+  var exps = [ {"exportFile": "items.ndjson","postStream": "ItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/ItemPostRequest"}, {"exportFile": "items.ndjson","postStream": "BibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/BibPostRequest"}]
 
   exps.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
     var getStream = function () {
       var data_array = [],
-          idx = 0;
+          idx = 0,
+          loadIndex = 1;
       highland(s3.getObject(params).createReadStream())
         .split()
         .compact()
         .map(JSON.parse)
+        .stopOnError((err, data) => {
+          if(err) console.log('error occurred - ' + err.message)
+        })
         .each((data) => {
           idx = idx + 1;
+          data["nyplSource"] = "sierra-nypl";
+          data["nyplType"] = exportFile.recordType;
+          console.log(data);
           data_array.push(data);
           if (idx > 499) {
             idx = 0;
-            kinesisHandler(data_array, context, exportFile);
+            kinesisHandler(loadIndex, data_array, context, exportFile);
             data_array = [];
           }
+          loadIndex += 1;
         })
         .on('end', function () {
           kinesisHandler(data_array, context, exportFile); // once more for the last batch, whatever size it is.
+          console.log(`Posting last ${idx} records. End of stream.`);
         });
     }
 
@@ -44,19 +53,23 @@ exports.handler = function(event, context){
 };
 
 //kinesis stream handler
-var kinesisHandler = function(records, context, exportFile) {
+var kinesisHandler = function(loadIndex, records, context, exportFile) {
   if(schema_stream_retriever === null){
     schema(exportFile.apiSchema)
     .then(function(schema_data){
       schema_stream_retriever = schema_data;
-      postKinesisStream(records, exportFile, schema_data);
+      setTimeout(() => {
+       postKinesisStream(records, exportFile, schema_data);
+      }, loadIndex)
     })
     .catch(function(e){
       console.log(records[0]);
       console.log(e, e.stack);
     });
   }else{
-    postKinesisStream(records, exportFile, schema_stream_retriever);
+    setTimeout(() => {
+      postKinesisStream(records, exportFile, schema_stream_retriever);
+    }, 10)
   }
 }
 
@@ -75,6 +88,8 @@ var schema = function(url, context) {
   })
 }
 
+var postedToKinesis = 0
+
 //send data to kinesis Stream
 var postKinesisStream = function(records, exportFile, schemaData){
   var avro_schema = avro.parse(schemaData);
@@ -90,9 +105,14 @@ var postKinesisStream = function(records, exportFile, schemaData){
     Records: records_in_avro_format, /* required */
     StreamName: exportFile.postStream /* required */
   }
+  /*console.log("Not posting records")
+  console.log('Records to kinesis - ' + records_in_avro_format.length)*/
   kinesis.putRecords(params, function (err, data) {
-    if (err) console.log(`Error posting to Kinesis: ${err}, ${err.stack}`); // an error occurred
-    else     console.log(`Successfully posted ${records.length} to kinesis. Sample record: ${JSON.stringify(records[0])}`);           // successful response
+    if (err) console.log(err, err.stack); // an error occurred
+    else    {
+      postedToKinesis += records_in_avro_format.length;
+      console.log("Successfully posted to kinesis: " + postedToKinesis);           // successful response
+    }
   })
 
 }
