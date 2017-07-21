@@ -12,8 +12,7 @@ var schema_stream_retriever = null;
 //main function
 exports.handler = function(event, context){
   JSONStream = require('JSONStream');
-  var exps = [ {"exportFile": "items.ndjson","postStream": "ItemPostRequest","recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/ItemPostRequest"}, {"exportFile": "items.ndjson","postStream": "BibPostRequest","recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/BibPostRequest"}]
-
+  var exps = [ {"exportFile": "items.ndjson","postStream": process.env['itemPostStream'],"recordType": "item","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/ItemPostRequest"}, {"exportFile": "items.ndjson","postStream": process.env['bibPostStream'],"recordType": "bib","apiSchema": "https://api.nypltech.org/api/v0.1/current-schemas/BibPostRequest"}]
   exps.forEach(function(exportFile) {
     var s3 = new AWS.S3({apiVersion: '2006-03-01'});
     var params = {Bucket: 'bulk-export-reader', Key: exportFile.exportFile };
@@ -58,7 +57,7 @@ var kinesisHandler = function(loadIndex, records, context, exportFile) {
     .then(function(schema_data){
       schema_stream_retriever = schema_data;
       setTimeout(() => {
-       postKinesisStream(records, exportFile, schema_data);
+        postKinesisStream(records, exportFile, schema_data);
       }, loadIndex)
     })
     .catch(function(e){
@@ -104,14 +103,45 @@ var postKinesisStream = function(records, exportFile, schemaData){
     Records: records_in_avro_format, /* required */
     StreamName: exportFile.postStream /* required */
   }
-  /*console.log("Not posting records")
-  console.log('Records to kinesis - ' + records_in_avro_format.length)*/
-  kinesis.putRecords(params, function (err, data) {
-    if (err) console.log(err, err.stack); // an error occurred
-    else    {
-      postedToKinesis += records_in_avro_format.length;
-      console.log("Successfully posted to kinesis: " + postedToKinesis);           // successful response
-    }
-  })
 
+  if(putRecordsUntilCompletelySuccessful (params, exportFile, true, records_in_avro_format)){
+    postedToKinesis += records_in_avro_format.length;
+    console.log("Successfully posted to kinesis: " + postedToKinesis); 
+  }
 }
+
+  var putRecordsUntilCompletelySuccessful = (params, exportFile, startRunning, recordsToPost) => {
+    if(startRunning) {
+      console.log("Records to post count: " + recordsToPost.length)
+      kinesis.putRecords(params, (err, data) => {
+              if (err) {
+                console.log(err, err.stack); // an error occurred
+                return false
+              }
+              else{
+                if(data.FailedRecordCount > 0){
+                  console.log('Hit putRecords error. Going to retrieve failed records')
+                  var failedRecords = getFailedRecords(data, recordsToPost)
+                  var params = {
+                      Records: failedRecords,
+                      StreamName: exportFile.postStream
+                  }
+                  putRecordsUntilCompletelySuccessful(params, exportFile, true, failedRecords)
+                }else  startRunning = false 
+              }
+      })
+    }
+    return true
+  }
+
+  var getFailedRecords = (data, recordsThatWerePosted) => {
+    var records = data.Records
+      var failedRecords = []
+      for(var i = 0; i < records.length; i++){
+        if(records[i].ErrorCode){
+          failedRecords.push(recordsThatWerePosted[i])
+        }
+      }
+      console.log('Failed records count : ' + failedRecords.length)
+      return failedRecords
+  }
