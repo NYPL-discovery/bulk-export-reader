@@ -40,7 +40,7 @@ exports.handler = function(event, context){
           loadIndex += 1;
         })
         .on('end', function () {
-          kinesisHandler(data_array, context, exportFile); // once more for the last batch, whatever size it is.
+          kinesisHandler(loadIndex, data_array, context, exportFile); // once more for the last batch, whatever size it is.
           console.log(`Posting last ${idx} records. End of stream.`);
         });
     }
@@ -104,34 +104,30 @@ var postKinesisStream = function(records, exportFile, schemaData){
     StreamName: exportFile.postStream /* required */
   }
 
-  if(putRecordsUntilCompletelySuccessful (params, exportFile, true, records_in_avro_format)){
-    postedToKinesis += records_in_avro_format.length;
-    console.log("Successfully posted to kinesis: " + postedToKinesis); 
-  }
+  putRecordsUntilCompletelySuccessful (params, exportFile) 
 }
 
-  var putRecordsUntilCompletelySuccessful = (params, exportFile, startRunning, recordsToPost) => {
-    if(startRunning) {
-      console.log("Records to post count: " + recordsToPost.length)
+  var putRecordsUntilCompletelySuccessful = (params, exportFile) => {
+    console.log("Records to post count: " + params.Records.length)
       kinesis.putRecords(params, (err, data) => {
               if (err) {
                 console.log(err, err.stack); // an error occurred
-                return false
               }
               else{
+                var successCount = params.Records.length - data.FailedRecordCount
+                postedToKinesis += successCount;
+                console.log("Successfully posted to kinesis: " + postedToKinesis);
                 if(data.FailedRecordCount > 0){
                   console.log('Hit putRecords error. Going to retrieve failed records')
-                  var failedRecords = getFailedRecords(data, recordsToPost)
+                  var failedRecords = getFailedRecords(data, params.Records)
                   var params = {
                       Records: failedRecords,
                       StreamName: exportFile.postStream
                   }
-                  putRecordsUntilCompletelySuccessful(params, exportFile, true, failedRecords)
-                }else  startRunning = false 
+                  putRecordsUntilCompletelySuccessful(params, exportFile)
+                }
               }
       })
-    }
-    return true
   }
 
   var getFailedRecords = (data, recordsThatWerePosted) => {
