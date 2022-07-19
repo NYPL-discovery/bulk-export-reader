@@ -1,4 +1,7 @@
-# bulk-export-reader
+# bulk-export-reader (Deprecated)
+
+Note: This app is an older, alternate implementation of [NYPL-Bibs-Items-S3-Harvester](https://github.com/NYPL-discovery/NYPL-Bibs-Items-S3-Harvester).
+
 Reads items from Sierra export saved in S3 export file, and publishes SierraItem to the SierraItemPostRequest Stream
 
 # Setup
